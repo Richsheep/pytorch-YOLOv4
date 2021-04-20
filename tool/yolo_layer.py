@@ -182,6 +182,10 @@ def yolo_forward_dynamic(output, conf_thresh, num_classes, anchors, num_anchors,
     # Shape: [batch, num_anchors, H, W]
     det_confs = torch.cat(det_confs_list, dim=1)
     # Shape: [batch, num_anchors * H * W]
+    #print('def {}'.format(det_confs.shape))
+    #for i in range(0, 4):
+    #    print('output.size({}) = {}'.format(i, output.size(i)))
+    det_confs = det_confs.contiguous()
     det_confs = det_confs.view(output.size(0), num_anchors * output.size(2) * output.size(3))
 
     # Shape: [batch, num_anchors * num_classes, H, W]
@@ -223,10 +227,17 @@ def yolo_forward_dynamic(output, conf_thresh, num_classes, anchors, num_anchors,
     # Apply C-x, C-y, P-w, P-h
     for i in range(num_anchors):
         ii = i * 2
+
+        # issue #386 suggest
         # Shape: [batch, 1, H, W]
-        bx = bxy[:, ii : ii + 1] + torch.tensor(grid_x, device=device, dtype=torch.float32) # grid_x.to(device=device, dtype=torch.float32)
+        bx = bxy[:, ii : ii + 1] + torch.FloatTensor(grid_x).to(device) # grid_x.to(device=device, dtype=torch.float32)
         # Shape: [batch, 1, H, W]
-        by = bxy[:, ii + 1 : ii + 2] + torch.tensor(grid_y, device=device, dtype=torch.float32) # grid_y.to(device=device, dtype=torch.float32)
+        by = bxy[:, ii + 1 : ii + 2] + torch.FloatTensor(grid_y).to(device) # grid_y.to(device=device, dtype=torch.float32)
+        # Origin
+        ## Shape: [batch, 1, H, W]
+        #bx = bxy[:, ii : ii + 1] + torch.tensor(grid_x, device=device, dtype=torch.float32) # grid_x.to(device=device, dtype=torch.float32)
+        ## Shape: [batch, 1, H, W]
+        #by = bxy[:, ii + 1 : ii + 2] + torch.tensor(grid_y, device=device, dtype=torch.float32) # grid_y.to(device=device, dtype=torch.float32)
         # Shape: [batch, 1, H, W]
         bw = bwh[:, ii : ii + 1] * anchor_w[i]
         # Shape: [batch, 1, H, W]
@@ -261,6 +272,12 @@ def yolo_forward_dynamic(output, conf_thresh, num_classes, anchors, num_anchors,
     by_bh /= output.size(2)
 
     # Shape: [batch, num_anchors * H * W, 1]
+
+    bx_bw = bx_bw.contiguous()
+    by_bh = by_bh.contiguous()
+    bx_bw = bx_bw.contiguous()
+    by_bh = by_bh.contiguous()
+
     bx = bx_bw[:, :num_anchors].view(output.size(0), num_anchors * output.size(2) * output.size(3), 1)
     by = by_bh[:, :num_anchors].view(output.size(0), num_anchors * output.size(2) * output.size(3), 1)
     bw = bx_bw[:, num_anchors:].view(output.size(0), num_anchors * output.size(2) * output.size(3), 1)

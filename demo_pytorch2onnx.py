@@ -63,7 +63,7 @@ def transform_to_onnx(weight_file, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W
     
 
 
-def main(weight_file, image_path, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W):
+def main(weight_file, image_path, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W, namesfile):
 
     if batch_size <= 0:
         onnx_path_demo = transform_to_onnx(weight_file, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W)
@@ -78,13 +78,13 @@ def main(weight_file, image_path, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W)
     print("The model expects input shape: ", session.get_inputs()[0].shape)
 
     image_src = cv2.imread(image_path)
-    detect(session, image_src)
+    detect(session, image_src, namesfile, n_classes)
 
 
 
 if __name__ == '__main__':
     print("Converting to onnx and running demo ...")
-    if len(sys.argv) == 7:
+    if len(sys.argv) == 8:
         
         weight_file = sys.argv[1]
         image_path = sys.argv[2]
@@ -92,8 +92,10 @@ if __name__ == '__main__':
         n_classes = int(sys.argv[4])
         IN_IMAGE_H = int(sys.argv[5])
         IN_IMAGE_W = int(sys.argv[6])
+        namesfile = sys.argv[7]
 
-        main(weight_file, image_path, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W)
+
+        main(weight_file, image_path, batch_size, n_classes, IN_IMAGE_H, IN_IMAGE_W, namesfile)
     else:
         print('Please run this way:\n')
         print('  python demo_onnx.py <weight_file> <image_path> <batch_size> <n_classes> <IN_IMAGE_H> <IN_IMAGE_W>')

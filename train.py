@@ -128,21 +128,29 @@ def bboxes_iou(bboxes_a, bboxes_b, xyxy=True, GIoU=False, DIoU=False, CIoU=False
 
 
 class Yolo_loss(nn.Module):
-    def __init__(self, n_classes=80, n_anchors=3, device=None, batch=2):
+    def __init__(self, n_classes, n_anchors, device=None, batch=1):
         super(Yolo_loss, self).__init__()
         self.device = device
-        self.strides = [8, 16, 32]
-        image_size = 608
+        image_size = 416
         self.n_classes = n_classes
         self.n_anchors = n_anchors
 
-        self.anchors = [[12, 16], [19, 36], [40, 28], [36, 75], [76, 55], [72, 146], [142, 110], [192, 243], [459, 401]]
-        self.anch_masks = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
-        self.ignore_thre = 0.5
+        is_tiny = True
+        if is_tiny:
+            #self.anchors = [[10, 14], [23, 27], [37, 58], [81, 82], [135, 169], [344,319]]
+            self.anchors = [[38, 47], [57, 79], [62, 117], [70, 166], [90, 122], [196,381]]
+            self.anch_masks = [[0, 1, 2], [3, 4, 5]]
+            self.ignore_thre = 0.5
+            self.strides = [32, 16]
+        else:
+            self.anchors = [[12, 16], [19, 36], [40, 28], [36, 75], [76, 55], [72, 146], [142, 110], [192, 243], [459, 401]]
+            self.anch_masks = [[0, 1, 2], [3, 4, 5], [6, 7, 8]]
+            self.ignore_thre = 0.5
+            self.strides = [8, 16, 32]
 
         self.masked_anchors, self.ref_anchors, self.grid_x, self.grid_y, self.anchor_w, self.anchor_h = [], [], [], [], [], []
 
-        for i in range(3):
+        for i in range(len(self.strides)):
             all_anchors_grid = [(w / self.strides[i], h / self.strides[i]) for w, h in self.anchors]
             masked_anchors = np.array([all_anchors_grid[j] for j in self.anch_masks[i]], dtype=np.float32)
             ref_anchors = np.zeros((len(all_anchors_grid), 4), dtype=np.float32)
@@ -323,7 +331,7 @@ def train(model, device, config, epochs=5, batch_size=1, save_cp=True, log_step=
         Optimizer:       {config.TRAIN_OPTIMIZER}
         Dataset classes: {config.classes}
         Train label path:{config.train_label}
-        Pretrained:
+        Pretrained:      {config.pretrained}
     ''')
 
     # learning rate setup
@@ -354,7 +362,8 @@ def train(model, device, config, epochs=5, batch_size=1, save_cp=True, log_step=
         )
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, burnin_schedule)
 
-    criterion = Yolo_loss(device=device, batch=config.batch // config.subdivisions, n_classes=config.classes)
+    criterion = Yolo_loss(device=device, batch=config.batch // config.subdivisions, n_classes=model.num_classes, n_anchors=3)
+    #criterion = model.loss()
     # scheduler = ReduceLROnPlateau(optimizer, mode='max', verbose=True, patience=6, min_lr=1e-7)
     # scheduler = CosineAnnealingWarmRestarts(optimizer, 0.001, 1e-6, 20)
 
@@ -612,6 +621,8 @@ if __name__ == "__main__":
 
     if cfg.use_darknet_cfg:
         model = Darknet(cfg.cfgfile)
+        print('model darknet num_classes{}'.format(model.num_classes))
+        model.load_weights(cfg.pretrained)
     else:
         model = Yolov4(cfg.pretrained, n_classes=cfg.classes)
 

@@ -195,7 +195,7 @@ def post_processing(img, conf_thresh, nms_thresh, output):
 
     bboxes_batch = []
     for i in range(box_array.shape[0]):
-       
+        # current conf > threshold or not?
         argwhere = max_conf[i] > conf_thresh
         l_box_array = box_array[i, argwhere, :]
         l_max_conf = max_conf[i, argwhere]
